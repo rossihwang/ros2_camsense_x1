@@ -39,6 +39,6 @@ class CamsenseX1 : public rclcpp::Node {
   std::vector<float> ranges_;
   std::vector<float> intensities_;
 
-  void Parse();
-  void InitData();
+  void parse();
+  void reset_parse();
 };

@@ -25,12 +25,12 @@ CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &optio
   ranges_.resize(360);
   intensities_.resize(360);
 
-  InitData();
+  reset_data();
 
   thread_ = std::thread{[this]() -> void {
     rclcpp::Rate rate(std::chrono::milliseconds(1));
     while (rclcpp::ok() && !canceled_.load()) {
-      Parse();
+      parse();
       // rate.sleep();
     }
   }};
@@ -43,7 +43,7 @@ CamsenseX1::~CamsenseX1() {
   }
 }
 
-void CamsenseX1::Parse() {
+void CamsenseX1::parse() {
   switch (state_) {
     case State::SYNC1:
       serial_ptr_->read(buffer_, 1);
@@ -147,7 +147,7 @@ void CamsenseX1::Parse() {
         message.ranges = ranges_;
         message.intensities = intensities_;
         scan_pub_->publish(message);
-        InitData();
+        reset_data();
       }
       state_ = State::SYNC1;
       break;
@@ -156,10 +156,9 @@ void CamsenseX1::Parse() {
   }
 }
 
-void CamsenseX1::InitData() {
+void CamsenseX1::reset_data() {
   for (int i = 0; i < 360; ++i) {
     ranges_[i] = 8;
     intensities_[i] = 0;
   }
 }
-
