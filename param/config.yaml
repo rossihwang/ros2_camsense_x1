@@ -1,0 +1,6 @@
+camsense_x1_node:
+  ros__parameters:
+    frame_id: "scan"
+    port: "/dev/ttyUSB0"
+    baud: 115200
+    rotation: 0  # degree

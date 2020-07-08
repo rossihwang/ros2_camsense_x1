@@ -1,6 +1,7 @@
 // Copyright <2020> [Copyright rossihwang@gmail.com]
 
 #include <camsense_x1/camsense_x1.hpp>
+#include <rcl_interfaces/msg/parameter.hpp>
 #include <cmath>
 
 constexpr uint8_t kSync1 = 0x55;
@@ -10,8 +11,10 @@ constexpr uint8_t kSync4 = 0x08;
 
 CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &options)
   : Node(name, options),
+    frame_id_("scan"),
     port_("/dev/ttyUSB0"),
     baud_(115200),
+    rotation_(0),
     state_(State::SYNC1),
     canceled_(false),
     speed_(0),
@@ -25,10 +28,11 @@ CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &optio
   ranges_.resize(360);
   intensities_.resize(360);
 
+  create_parameter();
   reset_data();
 
   thread_ = std::thread{[this]() -> void {
-    rclcpp::Rate rate(std::chrono::milliseconds(1));
+    rclcpp::Rate rate(std::chrono::milliseconds(16));
     while (rclcpp::ok() && !canceled_.load()) {
       parse();
       // rate.sleep();
@@ -137,7 +141,7 @@ void CamsenseX1::parse() {
         // RCLCPP_INFO(this->get_logger(), "publish");
         sensor_msgs::msg::LaserScan message;
         message.header.stamp = now();
-        message.header.frame_id = "scan";
+        message.header.frame_id = frame_id_;
         message.angle_increment = (2.0 * M_PI) / 360.0;
         message.angle_min = 0.0;
         message.angle_max = 2.0 * M_PI - message.angle_increment;
@@ -161,4 +165,37 @@ void CamsenseX1::reset_data() {
     ranges_[i] = 8;
     intensities_[i] = 0;
   }
+}
+
+void CamsenseX1::create_parameter() {
+  frame_id_ = declare_parameter<std::string>("frame_id", "scan");
+  port_ = declare_parameter<std::string>("port", "/dev/ttyUSB0");
+  baud_ = declare_parameter<int>("baud", 115200);
+  rotation_ = declare_parameter<int>("rotation", 0);
+
+  set_on_parameters_set_callback (
+    [this](std::vector<rclcpp::Parameter> parameters) -> rcl_interfaces::msg::SetParametersResult {
+      auto result = rcl_interfaces::msg::SetParametersResult();
+      result.successful = true;
+      for (auto const &p : parameters) {
+        result.successful &= handle_parameter(p);
+      }
+      return result;
+    });
+}
+
+bool CamsenseX1::handle_parameter(rclcpp::Parameter const &param) {
+  if (param.get_name() == "frame_id") {
+    frame_id_ = param.as_string();
+  } else if (param.get_name() == "port") {
+    port_ = param.as_string();
+  } else if (param.get_name() == "baud") {
+    baud_ = param.as_int();
+  } else if (param.get_name() == "rotation") {
+    rotation_ = param.as_int() % 360;
+  } else {
+    return false;
+  }
+
+  return true;
 }

@@ -26,8 +26,10 @@ class CamsenseX1 : public rclcpp::Node {
   };
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr scan_pub_;
   std::shared_ptr<serial::Serial> serial_ptr_;
+  std::string frame_id_;
   std::string port_;
   int baud_;
+  int rotation_;
   State state_;
   uint8_t buffer_[2];
   uint8_t frame_data_[24];
@@ -40,5 +42,7 @@ class CamsenseX1 : public rclcpp::Node {
   std::vector<float> intensities_;
 
   void parse();
-  void reset_parse();
+  void reset_data();
+  void create_parameter();
+  bool handle_parameter(rclcpp::Parameter const &param);
 };
