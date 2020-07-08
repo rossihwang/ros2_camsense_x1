@@ -147,6 +147,10 @@ void CamsenseX1::parse() {
         message.scan_time = 0.001;
         message.range_min = 0.08;
         message.range_max = 8;
+        if (rotation_ != 0) {
+          std::rotate(ranges_.begin(), ranges_.begin() - rotation_, ranges_.end());
+          std::rotate(intensities_.begin(), intensities_.begin() - rotation_, intensities_.end());
+        }
         message.ranges = ranges_;
         message.intensities = intensities_;
         scan_pub_->publish(message);
