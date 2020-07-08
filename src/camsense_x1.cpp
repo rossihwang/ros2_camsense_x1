@@ -19,7 +19,8 @@ CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &optio
     canceled_(false),
     speed_(0),
     start_angle_(0.0),
-    end_angle_(0.0) {
+    end_angle_(0.0),
+    rate_(std::chrono::milliseconds(32)) {
   scan_pub_ = this->create_publisher<sensor_msgs::msg::LaserScan>("/scan", 10);
   serial_ptr_ = std::make_shared<serial::Serial>(port_, baud_, serial::Timeout::simpleTimeout(1000));
   
@@ -32,10 +33,8 @@ CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &optio
   reset_data();
 
   thread_ = std::thread{[this]() -> void {
-    rclcpp::Rate rate(std::chrono::milliseconds(16));
     while (rclcpp::ok() && !canceled_.load()) {
       parse();
-      // rate.sleep();
     }
   }};
 }
@@ -152,6 +151,7 @@ void CamsenseX1::parse() {
         message.intensities = intensities_;
         scan_pub_->publish(message);
         reset_data();
+        rate_.sleep();
       }
       state_ = State::SYNC1;
       break;

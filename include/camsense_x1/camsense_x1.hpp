@@ -40,6 +40,7 @@ class CamsenseX1 : public rclcpp::Node {
   float end_angle_;
   std::vector<float> ranges_;
   std::vector<float> intensities_;
+  rclcpp::Rate rate_;
 
   void parse();
   void reset_data();
