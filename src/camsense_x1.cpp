@@ -8,6 +8,7 @@ constexpr uint8_t kSync1 = 0x55;
 constexpr uint8_t kSync2 = 0xaa;
 constexpr uint8_t kSync3 = 0x03;
 constexpr uint8_t kSync4 = 0x08; 
+constexpr double kIndexMultiplier = 400 / 360;
 
 CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &options)
   : Node(name, options),
@@ -26,8 +27,8 @@ CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &optio
   
   RCLCPP_INFO(this->get_logger(), "%s is open(%d)", port_.c_str(), serial_ptr_->isOpen());
   
-  ranges_.resize(360);
-  intensities_.resize(360);
+  ranges_.resize(400);
+  intensities_.resize(400);
 
   create_parameter();
   reset_data();
@@ -117,36 +118,27 @@ void CamsenseX1::parse() {
         int j = 3 * i;
         uint16_t range = static_cast<uint16_t>(frame_data_[j+1]) << 8 | frame_data_[j];
         uint8_t intensity = frame_data_[j+2];
-        int angle = std::round(start_angle_ + angle_res * i);
-        angle = 360 - angle;
-        // RCLCPP_INFO(this->get_logger(), "angle: %d ", angle);
+        double measured_angle = start_angle_ + angle_res * i;
+        int angle_index = std::round(measured_angle * kIndexMultiplier);
+        angle_index %= 400;
+        angle_index = 399 - angle_index;
         if (range == 0x8000) {
-          range = 8000;
+          range = 8000;  // maximum range in mm
         }
-        if (ranges_[angle] == 8) {
-          ranges_[angle] = static_cast<float>(range) / 1000.0;
-        } else {
-          ranges_[angle] = (ranges_[angle] + (static_cast<float>(range))/1000.0) / 2.0;
-        }
-        
-        if (intensities_[angle] == 0) {
-          intensities_[angle] = static_cast<float>(intensity);
-        } else {
-          intensities_[angle] = (intensities_[angle] + static_cast<float>(intensity)) / 2.0;
-        }
-        
+        ranges_[angle_index] = static_cast<float>(range) / 1000.0;
+        intensities_[angle_index] = static_cast<float>(intensity);
       }
       if (end_angle_ < start_angle_) {
         // RCLCPP_INFO(this->get_logger(), "publish");
         sensor_msgs::msg::LaserScan message;
         message.header.stamp = now();
         message.header.frame_id = frame_id_;
-        message.angle_increment = (2.0 * M_PI) / 360.0;
+        message.angle_increment = (2.0 * M_PI) / 400.0;
         message.angle_min = 0.0;
         message.angle_max = 2.0 * M_PI - message.angle_increment;
         message.scan_time = 0.001;
-        message.range_min = 0.08;
-        message.range_max = 8;
+        message.range_min = 0.08;  // camsense x1 spec
+        message.range_max = 8;    // camsense x1 spec
         if (rotation_ != 0) {
           std::rotate(ranges_.begin(), ranges_.begin() - rotation_, ranges_.end());
           std::rotate(intensities_.begin(), intensities_.begin() - rotation_, intensities_.end());
@@ -165,7 +157,7 @@ void CamsenseX1::parse() {
 }
 
 void CamsenseX1::reset_data() {
-  for (int i = 0; i < 360; ++i) {
+  for (int i = 0; i < 400; ++i) {
     ranges_[i] = 8;
     intensities_[i] = 0;
   }
