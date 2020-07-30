@@ -3,4 +3,4 @@ camsense_x1_node:
     frame_id: "scan"
     port: "/dev/ttyUSB0"
     baud: 115200
-    rotation: 22  # degree, right hand
+    angle_offset: 180  # degree, right hand

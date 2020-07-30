@@ -29,7 +29,7 @@ class CamsenseX1 : public rclcpp::Node {
   std::string frame_id_;
   std::string port_;
   int baud_;
-  int rotation_;
+  int angle_offset_;
   State state_;
   uint8_t buffer_[2];
   uint8_t frame_data_[24];

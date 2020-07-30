@@ -15,7 +15,7 @@ CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &optio
     frame_id_("scan"),
     port_("/dev/ttyUSB0"),
     baud_(115200),
-    rotation_(0),
+    angle_offset_(0),
     state_(State::SYNC1),
     canceled_(false),
     speed_(0),
@@ -118,7 +118,7 @@ void CamsenseX1::parse() {
         int j = 3 * i;
         uint16_t range = static_cast<uint16_t>(frame_data_[j+1]) << 8 | frame_data_[j];
         uint8_t intensity = frame_data_[j+2];
-        double measured_angle = start_angle_ + angle_res * i;
+        double measured_angle = start_angle_ + angle_res * i - angle_offset_;
         int angle_index = std::round(measured_angle * kIndexMultiplier);
         angle_index %= 400;
         angle_index = 399 - angle_index;
@@ -139,10 +139,6 @@ void CamsenseX1::parse() {
         message.scan_time = 0.001;
         message.range_min = 0.08;  // camsense x1 spec
         message.range_max = 8;    // camsense x1 spec
-        if (rotation_ != 0) {
-          std::rotate(ranges_.begin(), ranges_.begin() - rotation_, ranges_.end());
-          std::rotate(intensities_.begin(), intensities_.begin() - rotation_, intensities_.end());
-        }
         message.ranges = ranges_;
         message.intensities = intensities_;
         scan_pub_->publish(message);
@@ -167,7 +163,7 @@ void CamsenseX1::create_parameter() {
   frame_id_ = declare_parameter<std::string>("frame_id", "scan");
   port_ = declare_parameter<std::string>("port", "/dev/ttyUSB0");
   baud_ = declare_parameter<int>("baud", 115200);
-  rotation_ = declare_parameter<int>("rotation", 0);
+  angle_offset_ = declare_parameter<int>("angle_offset", 0);
 
   set_on_parameters_set_callback (
     [this](std::vector<rclcpp::Parameter> parameters) -> rcl_interfaces::msg::SetParametersResult {
@@ -188,7 +184,7 @@ bool CamsenseX1::handle_parameter(rclcpp::Parameter const &param) {
   } else if (param.get_name() == "baud") {
     baud_ = param.as_int();
   } else if (param.get_name() == "rotation") {
-    rotation_ = param.as_int() % 360;
+    angle_offset_ = param.as_int() % 360;
   } else {
     return false;
   }
