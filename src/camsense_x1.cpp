@@ -110,9 +110,9 @@ void CamsenseX1::parse() {
       // TODO: validate crc
       float angle_res;
       if (end_angle_ < start_angle_) {
-        angle_res = (end_angle_ + 360 - start_angle_) / 8.0;
+        angle_res = (end_angle_ + 360 - start_angle_) / 7.0;
       } else {
-        angle_res = (end_angle_ - start_angle_) / 8.0;
+        angle_res = (end_angle_ - start_angle_) / 7.0;
       }
       for (int i = 0; i < 8; ++i) {
         int j = 3 * i;
