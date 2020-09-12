@@ -8,7 +8,6 @@ constexpr uint8_t kSync1 = 0x55;
 constexpr uint8_t kSync2 = 0xaa;
 constexpr uint8_t kSync3 = 0x03;
 constexpr uint8_t kSync4 = 0x08; 
-constexpr double kIndexMultiplier = 400 / 360;
 
 CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &options)
   : Node(name, options),
@@ -27,8 +26,8 @@ CamsenseX1::CamsenseX1(const std::string &name, rclcpp::NodeOptions const &optio
   
   RCLCPP_INFO(this->get_logger(), "%s is open(%d)", port_.c_str(), serial_ptr_->isOpen());
   
-  ranges_.resize(400);
-  intensities_.resize(400);
+  ranges_.resize(360);
+  intensities_.resize(360);
 
   create_parameter();
   reset_data();
@@ -119,9 +118,9 @@ void CamsenseX1::parse() {
         uint16_t range = static_cast<uint16_t>(frame_data_[j+1]) << 8 | frame_data_[j];
         uint8_t intensity = frame_data_[j+2];
         double measured_angle = start_angle_ + angle_res * i - angle_offset_;
-        int angle_index = std::round(measured_angle * kIndexMultiplier);
-        angle_index %= 400;
-        angle_index = 399 - angle_index;
+        int angle_index = std::round(measured_angle);
+        angle_index %= 360;
+        angle_index = 359 - angle_index;
         if (range == 0x8000) {
           range = 8000;  // maximum range in mm
         }
@@ -133,7 +132,7 @@ void CamsenseX1::parse() {
         sensor_msgs::msg::LaserScan message;
         message.header.stamp = now();
         message.header.frame_id = frame_id_;
-        message.angle_increment = (2.0 * M_PI) / 400.0;
+        message.angle_increment = (2.0 * M_PI) / 360.0;
         message.angle_min = 0.0;
         message.angle_max = 2.0 * M_PI - message.angle_increment;
         message.scan_time = 0.001;
@@ -153,7 +152,7 @@ void CamsenseX1::parse() {
 }
 
 void CamsenseX1::reset_data() {
-  for (int i = 0; i < 400; ++i) {
+  for (int i = 0; i < 360; ++i) {
     ranges_[i] = 8;
     intensities_[i] = 0;
   }
